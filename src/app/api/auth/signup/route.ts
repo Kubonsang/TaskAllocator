@@ -90,6 +90,6 @@ export async function POST(req: Request) {
     });
   } catch (err: any) {
     console.error('[signup error]', err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return NextResponse.json({ error: '계정 생성 중 오류가 발생했습니다.' }, { status: 500 });
   }
 }
