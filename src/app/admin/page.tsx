@@ -57,6 +57,8 @@ export default function AdminPage() {
   const [scheduleDate, setScheduleDate] = useState(new Date().toISOString().split('T')[0]);
   const [allSchedulesData, setAllSchedulesData] = useState<{user: any, schedules: any[]}[]>([]);
   const [isLoadingSchedules, setIsLoadingSchedules] = useState(false);
+  const [editingScheduleId, setEditingScheduleId] = useState<number | null>(null);
+  const [editScheduleData, setEditScheduleData] = useState({ startHour: 9, endHour: 10, note: '' });
   
   const [generatedInviteUrl, setGeneratedInviteUrl] = useState('');
   const [copiedInviteUrl, setCopiedInviteUrl] = useState(false);
@@ -112,6 +114,52 @@ export default function AdminPage() {
       setIsLoadingSchedules(false);
     }
   };
+
+  const handleEditScheduleClick = (schedule: any) => {
+    setEditingScheduleId(schedule.id);
+    setEditScheduleData({ 
+      startHour: schedule.start_hour || 9, 
+      endHour: schedule.end_hour || 10, 
+      note: schedule.note || '' 
+    });
+  };
+
+  const handleSaveScheduleEdit = async () => {
+    if (!editingScheduleId) return;
+    try {
+       const res = await authFetch('/api/admin/schedule', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+             scheduleId: editingScheduleId, 
+             startHour: editScheduleData.startHour, 
+             endHour: editScheduleData.endHour, 
+             note: editScheduleData.note 
+          })
+       });
+       const data = await res.json();
+       if (!res.ok) throw new Error(data.error);
+       alert('일정이 수정되었습니다.');
+       setEditingScheduleId(null);
+       fetchAllSchedules(scheduleDate);
+    } catch (err: any) { alert(err.message); }
+  };
+
+  const handleDeleteSchedule = async (scheduleId: string) => {
+    if (!confirm('이 일정을 삭제하시겠습니까? (이 작업은 복구할 수 없습니다)')) return;
+    try {
+       const res = await authFetch('/api/admin/schedule', {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ scheduleId })
+       });
+       const data = await res.json();
+       if (!res.ok) throw new Error(data.error);
+       alert('일정이 삭제되었습니다.');
+       fetchAllSchedules(scheduleDate);
+    } catch (err: any) { alert(err.message); }
+  };
+
 
   useEffect(() => {
     if (isAllSchedulesModalOpen) {
@@ -877,24 +925,59 @@ export default function AdminPage() {
                              <p className="text-xs text-center text-gray-400 py-3">업무가 없습니다.</p>
                           ) : (
                              data.schedules.map((schedule: any) => (
-                                <div key={schedule.id} className="flex flex-col gap-1 p-3 bg-white border border-gray-100 rounded-lg shadow-sm">
-                                   <div className="flex justify-between items-start">
-                                      {schedule.tasks ? (
-                                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${schedule.tasks.color || 'bg-gray-100 text-gray-700'}`}>
-                                          {schedule.tasks.start_hour}시 ~ {schedule.tasks.end_hour}시
-                                        </span>
-                                      ) : (
-                                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 text-center">
-                                          {schedule.start_hour}시 ~ {schedule.end_hour}시
-                                        </span>
-                                      )}
-                                      <span className="text-[10px] text-gray-400 truncate max-w-[100px]">{schedule.note}</span>
-                                   </div>
-                                   <div className="font-bold text-gray-800 text-sm mt-1">
-                                      {schedule.tasks ? schedule.tasks.title : '예외/휴가/기타 일정'}
-                                   </div>
-                                   {schedule.tasks?.location && <div className="text-[10px] text-gray-500 mt-1">📍 {schedule.tasks.location}</div>}
-                                </div>
+                                 <div key={schedule.id} className="flex flex-col gap-1 p-3 bg-white border border-gray-100 rounded-lg shadow-sm relative">
+                                    {editingScheduleId === schedule.id ? (
+                                      <div className="flex flex-col gap-2 relative pointer-events-auto">
+                                        <div className="flex justify-between items-center bg-gray-50 p-1.5 rounded-md">
+                                          <div className="flex gap-2 w-full">
+                                            <div className="flex flex-col flex-1">
+                                              <label className="text-[10px] text-gray-500 font-bold mb-0.5">수행 시작(시)</label>
+                                              <input type="number" step="1" value={editScheduleData.startHour} onChange={e => setEditScheduleData({...editScheduleData, startHour: Number(e.target.value)})} className="w-full border border-gray-200 rounded p-1 text-xs" />
+                                            </div>
+                                            <div className="flex flex-col flex-1">
+                                              <label className="text-[10px] text-gray-500 font-bold mb-0.5">수행 종료(시)</label>
+                                              <input type="number" step="1" value={editScheduleData.endHour} onChange={e => setEditScheduleData({...editScheduleData, endHour: Number(e.target.value)})} className="w-full border border-gray-200 rounded p-1 text-xs" />
+                                            </div>
+                                          </div>
+                                        </div>
+                                        <div className="flex flex-col">
+                                          <label className="text-[10px] text-gray-500 font-bold mb-0.5">내용 및 메모</label>
+                                          <input type="text" value={editScheduleData.note} onChange={e => setEditScheduleData({...editScheduleData, note: e.target.value})} className="w-full border border-gray-200 rounded p-1.5 text-xs bg-white focus:border-indigo-500 focus:outline-none" placeholder="비고 작성 (옵션)" />
+                                        </div>
+                                        <div className="flex gap-2 mt-1">
+                                          <button onClick={() => setEditingScheduleId(null)} className="flex-1 text-xs bg-gray-200 text-gray-700 font-bold py-1.5 rounded-md transition-colors hover:bg-gray-300">취소</button>
+                                          <button onClick={handleSaveScheduleEdit} className="flex-1 text-xs bg-indigo-600 text-white font-bold py-1.5 rounded-md transition-colors hover:bg-indigo-700 shadow-sm">수정 저장하기</button>
+                                        </div>
+                                      </div>
+                                    ) : (
+                                      <>
+                                        <div className="flex justify-between items-start">
+                                           {schedule.tasks ? (
+                                             <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${schedule.tasks.color || 'bg-gray-100 text-gray-700'}`}>
+                                               {schedule.start_hour}시 ~ {schedule.end_hour}시
+                                             </span>
+                                           ) : (
+                                             <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 text-center">
+                                               {schedule.start_hour}시 ~ {schedule.end_hour}시
+                                             </span>
+                                           )}
+                                           <div className="flex gap-1 shrink-0 ml-2">
+                                              <button onClick={() => handleEditScheduleClick(schedule)} className="text-[10px] text-blue-600 font-bold bg-blue-50 px-2 flex items-center justify-center py-1 rounded-md hover:bg-blue-100 border border-blue-100 transition-colors">
+                                                수정
+                                              </button>
+                                              <button onClick={() => handleDeleteSchedule(schedule.id)} className="text-[10px] text-red-600 font-bold bg-red-50 px-2 flex items-center justify-center py-1 rounded-md hover:bg-red-100 border border-red-100 transition-colors">
+                                                삭제
+                                              </button>
+                                           </div>
+                                        </div>
+                                        <div className="font-bold text-gray-800 text-sm mt-1.5">
+                                           {schedule.tasks ? schedule.tasks.title : '예외/휴가/기타 일정'}
+                                        </div>
+                                        {schedule.tasks?.location && <div className="text-[10px] text-gray-500 mt-1">📍 {schedule.tasks.location}</div>}
+                                        {schedule.note && <div className="text-[10px] text-gray-600 mt-1 break-all bg-yellow-50/50 p-1.5 border border-yellow-100 rounded-md">📝 {schedule.note}</div>}
+                                      </>
+                                    )}
+                                 </div>
                              ))
                           )}
                        </div>
