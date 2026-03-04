@@ -11,4 +11,14 @@ if (!supabaseUrl || !supabaseAnonKey) {
   console.warn('⚠️ Supabase 환경변수가 설정되지 않았습니다. .env.local 파일을 확인해주세요.');
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+// window 객체가 존재하는 클라이언트 사이드에서만 localStorage 사용
+const storage = typeof window !== 'undefined' ? window.localStorage : undefined;
+
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    persistSession: true, // 로그인 유지
+    autoRefreshToken: true, // 토큰 자동 갱신
+    detectSessionInUrl: true, 
+    storage: storage as any, // 명시적 localStorage 지정
+  }
+});

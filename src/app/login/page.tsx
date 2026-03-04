@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { Lock, LogIn, AlertCircle, User } from 'lucide-react';
@@ -18,6 +18,25 @@ export default function LoginPage() {
   const [lockoutRemaining, setLockoutRemaining] = useState(0);
   const failCountRef = useRef(0);
   const lockoutTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // 자동 자동 로그인 (기존 세션 확인)
+  useEffect(() => {
+    async function checkExistingSession() {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        router.replace('/');
+      }
+    }
+    checkExistingSession();
+    
+    // Auth 상태 변경 감지해서 로그인 되어버리면 즉시 이동
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (session?.user) {
+        router.replace('/');
+      }
+    });
+    return () => { subscription.unsubscribe(); };
+  }, [router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
