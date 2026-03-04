@@ -67,7 +67,7 @@ export default function Header() {
     loadWorkers();
   }, [isOpen, currentUser]);
 
-  const isAuthPage = pathname === '/login' || pathname === '/register';
+  const isAuthPage = pathname === '/login' || pathname.startsWith('/register');
 
 
 
