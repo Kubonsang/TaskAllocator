@@ -5,6 +5,7 @@ import clsx from 'clsx';
 import { useState, useEffect } from 'react';
 import { floatToTimeString } from '@/lib/timeUtils';
 import { supabase } from '@/lib/supabase';
+import { authFetch } from '@/lib/authClient';
 // types
 import { DUMMY_USERS, CURRENT_USER_ID, TASK_TYPES, DUMMY_SCHEDULES, User, Task, Schedule } from '@/lib/dummyData';
 
@@ -187,7 +188,7 @@ export default function DashboardPage() {
   const handleCancelSchedule = async (scheduleId: string) => {
     if (!confirm('이 일정을 취소하고 해당 직원에게 알림을 보내시겠습니까?')) return;
     try {
-      const res = await fetch('/api/admin/cancel-schedule', {
+      const res = await authFetch('/api/admin/cancel-schedule', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ scheduleId })

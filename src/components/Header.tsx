@@ -3,6 +3,7 @@
 import { Bell, Menu, RefreshCw, X, Clock, MapPin, ArrowRightLeft, AlertTriangle, Check } from 'lucide-react';
 import { User, DUMMY_USERS } from '@/lib/dummyData';
 import { supabase } from '@/lib/supabase';
+import { authFetch } from '@/lib/authClient';
 import clsx from 'clsx';
 import { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
@@ -227,7 +228,7 @@ export default function Header() {
 
   const runAlgorithm = async () => {
     try {
-      const res = await fetch('/api/assign', { method: 'POST' });
+      const res = await authFetch('/api/assign', { method: 'POST' });
       const data = await res.json();
       if (res.ok) {
         alert(`✅ 배정 완료! ${data.assignedCount}건 배정됨 (${data.mode})\n화면을 새로고침합니다.`);

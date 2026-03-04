@@ -5,6 +5,7 @@ import { LogOut, Bell, BellRing, Trash2, FileSpreadsheet, X, Check } from 'lucid
 import { useState, useEffect } from 'react';
 import clsx from 'clsx';
 import { supabase } from '@/lib/supabase';
+import { authFetch } from '@/lib/authClient';
 
 export default function MyPage() {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
@@ -122,7 +123,7 @@ export default function MyPage() {
         applicationServerKey: outputArray,
       });
 
-      const res = await fetch('/api/push/subscribe', {
+      const res = await authFetch('/api/push/subscribe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -151,7 +152,7 @@ export default function MyPage() {
       const subscription = await registration.pushManager.getSubscription();
       if (subscription) {
         // DB에서 구독 삭제
-        await fetch('/api/push/unsubscribe', {
+        await authFetch('/api/push/unsubscribe', {
            method: 'POST',
            headers: { 'Content-Type': 'application/json' },
            body: JSON.stringify({ endpoint: subscription.endpoint })
@@ -276,7 +277,7 @@ export default function MyPage() {
                 alert('세션이 없습니다. 다시 로그인해주세요.');
                 return;
               }
-              const res = await fetch('/api/auth/delete-account', {
+              const res = await authFetch('/api/auth/delete-account', {
                 method: 'DELETE',
                 headers: { 'Authorization': `Bearer ${session.access_token}` }
               });

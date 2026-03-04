@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { getAuthUser, isAdminOrMaster } from '@/lib/auth';
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -7,57 +8,57 @@ const supabaseAdmin = createClient(
 );
 
 export async function DELETE(req: Request) {
+  // ✅ [C-1] 인증 검사
+  const authUser = await getAuthUser(req);
+  if (!authUser) {
+    return NextResponse.json({ error: '인증이 필요합니다.' }, { status: 401 });
+  }
+
   try {
-    // Authorization 헤더에서 사용자 토큰 확인
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader?.startsWith('Bearer ')) {
-      return NextResponse.json({ error: '인증이 필요합니다.' }, { status: 401 });
-    }
-    const token = authHeader.replace('Bearer ', '');
+    let targetUserId = authUser.id; // 기본: 본인 삭제
 
-    // 토큰으로 실제 유저 확인
-    const { data: { user: requester }, error: userErr } = await supabaseAdmin.auth.getUser(token);
-    if (userErr || !requester) {
-      return NextResponse.json({ error: '유효하지 않은 세션입니다.' }, { status: 401 });
-    }
-
-    // 요청 바디에서 삭제할 대상 ID 확인 (관리자 기능)
-    let targetUserId = requester.id;
     try {
       const body = await req.json();
-      if (body.userId && body.userId !== requester.id) {
-        // 다른 유저를 삭제하려는 경우 관리자 권한 확인
-        const { data: profile } = await supabaseAdmin
-          .from('profiles')
-          .select('role')
-          .eq('id', requester.id)
-          .single();
-        
-        if (profile?.role !== 'Admin' && profile?.role !== 'Master') {
+      if (body.userId && body.userId !== authUser.id) {
+        // ✅ [H-2] 다른 유저 삭제 시 계층 제한
+        if (!isAdminOrMaster(authUser)) {
           return NextResponse.json({ error: '다른 사용자의 계정을 삭제할 권한이 없습니다.' }, { status: 403 });
         }
+
+        // 삭제 대상의 역할 확인
+        const { data: targetProfile } = await supabaseAdmin
+          .from('profiles').select('role').eq('id', body.userId).single();
+
+        if (!targetProfile) {
+          return NextResponse.json({ error: '대상 사용자를 찾을 수 없습니다.' }, { status: 404 });
+        }
+
+        // ✅ [H-2] 역할 계층 제한:
+        // - Master는 모든 사용자 삭제 가능
+        // - Admin은 Worker만 삭제 가능 (Admin/Master 삭제 불가)
+        if (authUser.role === 'Admin') {
+          if (targetProfile.role === 'Admin' || targetProfile.role === 'Master') {
+            return NextResponse.json({ error: 'Admin은 같은 등급 이상의 계정을 삭제할 수 없습니다.' }, { status: 403 });
+          }
+        }
+
         targetUserId = body.userId;
       }
     } catch (e) {
-      // 바디가 없는 경우 (본인 삭제) - 무시하고 본인 ID 사용
+      // 바디가 없는 경우 (본인 삭제)
     }
 
-    // 1. 프로필 먼저 삭제 (외래 키 제약 조건 때문)
-    // schedules, swap_requests 등은 profiles 삭제 시 CASCADE 설정되어 있음
+    // 프로필 삭제 (CASCADE로 관련 데이터 정리)
     const { error: profileErr } = await supabaseAdmin
-      .from('profiles')
-      .delete()
-      .eq('id', targetUserId);
-    
+      .from('profiles').delete().eq('id', targetUserId);
     if (profileErr) throw profileErr;
 
-    // 2. auth.users에서 삭제
+    // auth.users에서 삭제
     const { error: deleteErr } = await supabaseAdmin.auth.admin.deleteUser(targetUserId);
     if (deleteErr) throw deleteErr;
 
     return NextResponse.json({ success: true, message: '계정이 성공적으로 삭제되었습니다.' });
   } catch (err: any) {
-    console.error('[delete-account error]', err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return NextResponse.json({ error: '계정 삭제 처리 중 오류가 발생했습니다.' }, { status: 500 });
   }
 }

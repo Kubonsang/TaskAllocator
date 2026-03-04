@@ -5,6 +5,7 @@ import { UploadCloud, FileSpreadsheet, CheckCircle2, ShieldAlert, Zap, RefreshCw
 import clsx from 'clsx';
 import { parseLegacyExcelData } from '@/lib/excelParser';
 import { supabase } from '@/lib/supabase';
+import { authFetch } from '@/lib/authClient';
 import { useRouter } from 'next/navigation';
 
 export default function AdminPage() {
@@ -146,7 +147,7 @@ export default function AdminPage() {
 
   const handleEmergencyAssign = async () => {
      try {
-        const res = await fetch('/api/assign/emergency', {
+        const res = await authFetch('/api/assign/emergency', {
            method: 'POST',
            headers: { 'Content-Type': 'application/json' },
            body: JSON.stringify(emergencyConfig)
@@ -244,7 +245,7 @@ export default function AdminPage() {
 
     try {
        const { data: { session } } = await supabase.auth.getSession();
-       const res = await fetch('/api/auth/delete-account', {
+       const res = await authFetch('/api/auth/delete-account', {
           method: 'DELETE',
           headers: { 
             'Content-Type': 'application/json',
@@ -267,10 +268,10 @@ export default function AdminPage() {
     setIsGeneratingInvite(true);
     setGeneratedInviteUrl('');
     try {
-       const res = await fetch('/api/admin/invite', {
+       const res = await authFetch('/api/admin/invite', {
          method: 'POST',
          headers: { 'Content-Type': 'application/json' },
-         body: JSON.stringify({ role: inviteRole, requesterUserId: currentUser.id })
+         body: JSON.stringify({ role: inviteRole,  })
        });
        const data = await res.json();
        if (!res.ok) throw new Error(data.error);
@@ -308,7 +309,7 @@ export default function AdminPage() {
     setIsRunningAlgo(true);
     setAlgoResult(null);
     try {
-      const res = await fetch('/api/assign', { method: 'POST' });
+      const res = await authFetch('/api/assign', { method: 'POST' });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
       

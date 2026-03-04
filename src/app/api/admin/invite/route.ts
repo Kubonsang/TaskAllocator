@@ -1,72 +1,60 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { getAuthUser, isAdminOrMaster } from '@/lib/auth';
 
-// 서버 사이드에서만 서비스 롤 키 사용
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
 export async function POST(req: Request) {
+  // ✅ [C-1] 인증 검사
+  // ✅ [H-1] JWT에서 사용자 ID 추출 (body의 requesterUserId를 신뢰하지 않음)
+  const authUser = await getAuthUser(req);
+  if (!authUser) {
+    return NextResponse.json({ error: '인증이 필요합니다.' }, { status: 401 });
+  }
+  if (!isAdminOrMaster(authUser)) {
+    return NextResponse.json({ error: '관리자 또는 마스터만 초대 링크를 생성할 수 있습니다.' }, { status: 403 });
+  }
+
   try {
-    const { role, requesterUserId } = await req.json();
-
-    // 요청자가 Admin인지 확인
-    const { data: requester } = await supabaseAdmin
-      .from('profiles')
-      .select('role')
-      .eq('id', requesterUserId)
-      .single();
-
-    if (!requester || (requester.role !== 'Admin' && requester.role !== 'Master')) {
-      return NextResponse.json({ error: '관리자 또는 마스터 관리자만 초대 링크를 생성할 수 있습니다.' }, { status: 403 });
-    }
+    const { role } = await req.json();
 
     const validRoles = ['Worker', 'Admin', 'Master'];
     if (!validRoles.includes(role)) {
       return NextResponse.json({ error: '유효하지 않은 역할입니다.' }, { status: 400 });
     }
 
-    // 초대 토큰 생성 (UUID 기반)
+    // ✅ [H-1] 인증된 사용자의 ID를 사용 (클라이언트 입력값이 아님)
     const { data: invite, error } = await supabaseAdmin
       .from('invites')
-      .insert({ role, created_by: requesterUserId })
+      .insert({ role, created_by: authUser.id })
       .select()
       .single();
 
     if (error) throw error;
 
-    // 앱 URL 기반으로 초대 링크 생성
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://task-allocator-hc.vercel.app';
     const inviteUrl = `${baseUrl}/register?token=${invite.token}&role=${role}`;
 
     return NextResponse.json({ inviteUrl, token: invite.token, role });
   } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return NextResponse.json({ error: '초대 링크 생성에 실패했습니다.' }, { status: 500 });
   }
 }
 
 export async function GET(req: Request) {
+  // ✅ [C-1] 인증 검사
+  const authUser = await getAuthUser(req);
+  if (!authUser) {
+    return NextResponse.json({ error: '인증이 필요합니다.' }, { status: 401 });
+  }
+  if (!isAdminOrMaster(authUser)) {
+    return NextResponse.json({ error: '관리자 또는 마스터만 접근 가능합니다.' }, { status: 403 });
+  }
+
   try {
-    const { searchParams } = new URL(req.url);
-    const requesterUserId = searchParams.get('userId');
-
-    if (!requesterUserId) {
-      return NextResponse.json({ error: '유저 ID가 필요합니다.' }, { status: 400 });
-    }
-
-    // Admin 확인
-    const { data: requester } = await supabaseAdmin
-      .from('profiles')
-      .select('role')
-      .eq('id', requesterUserId)
-      .single();
-
-    if (!requester || (requester.role !== 'Admin' && requester.role !== 'Master')) {
-      return NextResponse.json({ error: '관리자 또는 마스터 관리자만 접근 가능합니다.' }, { status: 403 });
-    }
-
-    // 초대 내역 조회
     const { data: invites, error } = await supabaseAdmin
       .from('invites')
       .select('*')
@@ -76,6 +64,6 @@ export async function GET(req: Request) {
     if (error) throw error;
     return NextResponse.json({ invites });
   } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return NextResponse.json({ error: '초대 내역 조회에 실패했습니다.' }, { status: 500 });
   }
 }
