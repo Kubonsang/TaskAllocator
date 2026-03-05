@@ -9,6 +9,9 @@
   "background_color": "#ffffff",
   "theme_color": "#4f46e5",
   "orientation": "portrait",
+  "categories": ["productivity", "business"],
+  "lang": "ko",
+  "dir": "ltr",
   "icons": [
     {
       "src": "/icons/icon-192x192.png",

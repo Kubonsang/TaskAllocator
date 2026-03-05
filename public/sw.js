@@ -1,4 +1,4 @@
-const CACHE_NAME = 'auto-assigner-cache-v1';
+const CACHE_NAME = 'auto-assigner-cache-v3';
 const urlsToCache = [
   '/',
   '/manifest.json',
