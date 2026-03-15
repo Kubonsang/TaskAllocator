@@ -11,6 +11,13 @@ export async function PUT(req: Request) {
     const { scheduleId, startHour, endHour, note, taskId } = await req.json();
     if (!scheduleId) return NextResponse.json({ error: 'scheduleId가 필요합니다.' }, { status: 400 });
 
+    // 스케줄 존재 여부 확인 (IDOR 방지)
+    const { data: existing, error: fetchErr } = await supabaseAdmin
+      .from('schedules').select('id').eq('id', scheduleId).single();
+    if (fetchErr || !existing) {
+      return NextResponse.json({ error: '존재하지 않는 일정입니다.' }, { status: 404 });
+    }
+
     const updateData: any = {};
     if (startHour !== undefined) updateData.start_hour = Number(startHour);
     if (endHour !== undefined) updateData.end_hour = Number(endHour);
@@ -19,7 +26,7 @@ export async function PUT(req: Request) {
 
     const { error } = await supabaseAdmin.from('schedules').update(updateData).eq('id', scheduleId);
     if (error) throw error;
-    
+
     return NextResponse.json({ success: true, message: '일정이 수정되었습니다.' });
   } catch (error: any) {
     return NextResponse.json({ error: '일정 수정 중 오류가 발생했습니다.' }, { status: 500 });
@@ -34,6 +41,13 @@ export async function DELETE(req: Request) {
   try {
     const { scheduleId } = await req.json();
     if (!scheduleId) return NextResponse.json({ error: 'scheduleId가 필요합니다.' }, { status: 400 });
+
+    // 스케줄 존재 여부 확인 (IDOR 방지)
+    const { data: existing, error: fetchErr } = await supabaseAdmin
+      .from('schedules').select('id').eq('id', scheduleId).single();
+    if (fetchErr || !existing) {
+      return NextResponse.json({ error: '존재하지 않는 일정입니다.' }, { status: 404 });
+    }
 
     const { error: deleteErr } = await supabaseAdmin.from('schedules').delete().eq('id', scheduleId);
     if (deleteErr) throw deleteErr;

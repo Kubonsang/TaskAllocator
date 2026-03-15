@@ -22,6 +22,12 @@ export default function StatsPage() {
   const [data, setData] = useState<StatData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session) window.location.replace('/login');
+    });
+  }, []);
+
   // 날짜 범위 지정 필터 (기본값 이번달 1일 ~ 오늘)
   const [startDate, setStartDate] = useState(() => {
      const d = new Date();

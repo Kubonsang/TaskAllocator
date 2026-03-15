@@ -16,8 +16,11 @@ export default function MyPage() {
       const { data: { session } } = await supabase.auth.getSession();
       let targetId: string | undefined = session?.user?.id;
 
-      // 세션이 없으면 리턴
-      if (!targetId) return;
+      // 세션이 없으면 로그인으로 리다이렉트
+      if (!targetId) {
+        window.location.replace('/login');
+        return;
+      }
 
       if (targetId) {
         const { data: p } = await supabase.from('profiles').select('*').eq('id', targetId).single();
@@ -298,6 +301,7 @@ export default function MyPage() {
         <button
           onClick={async () => {
             await supabase.auth.signOut();
+            await fetch('/api/auth/session', { method: 'DELETE' });
             window.location.href = '/login';
           }}
           className="w-full p-4 flex items-center gap-2 hover:bg-red-50 transition-colors text-sm font-bold text-red-500"

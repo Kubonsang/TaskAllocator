@@ -51,7 +51,7 @@ export async function DELETE(req: Request) {
       is_read: false
     });
 
-    return NextResponse.json({ success: true, notifiedUserId: schedule.user_id });
+    return NextResponse.json({ success: true });
   } catch (err: any) {
     return NextResponse.json({ error: '일정 취소 처리 중 오류가 발생했습니다.' }, { status: 500 });
   }

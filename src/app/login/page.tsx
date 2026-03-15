@@ -84,6 +84,13 @@ export default function LoginPage() {
       // 로그인 성공: 실패 카운트 리셋
       failCountRef.current = 0;
 
+      // 서버 측 HttpOnly 쿠키 발급 (미들웨어 인증용)
+      if (data.session?.access_token) {
+        await fetch('/api/auth/session', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${data.session.access_token}` },
+        });
+      }
 
       router.push('/');
     } catch (err: any) {

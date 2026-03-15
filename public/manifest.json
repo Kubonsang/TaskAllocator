@@ -1,9 +1,9 @@
 {
-  "name": "Auto-Assigner Pro",
-  "short_name": "TaskAllocator",
+  "name": "Task Allocator Pro",
+  "short_name": "TaskAllocator v2",
   "description": "자동 업무 배정 및 스케줄링 관리 시스템",
-  "id": "/?source=pwa",
-  "start_url": "/",
+  "id": "/?mode=app",
+  "start_url": "/?mode=app",
   "scope": "/",
   "display": "standalone",
   "background_color": "#ffffff",
