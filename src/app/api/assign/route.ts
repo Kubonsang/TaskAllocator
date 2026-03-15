@@ -1,15 +1,9 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import { assignTasks, AlgorithmUser, AlgorithmTask } from '@/lib/algorithm';
 import { DUMMY_USERS, TASK_TYPES } from '@/lib/dummyData';
 import { sendPushNotification } from '@/lib/webpush';
 import { getAuthUser, isAdminOrMaster } from '@/lib/auth';
-
-// Service role key 사용 → RLS 우회하여 schedules 테이블에 INSERT 가능
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
+import { supabaseAdmin } from '@/lib/supabaseServer';
 
 export async function POST(req: Request) {
   // ✅ [C-1] 인증 검사
