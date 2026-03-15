@@ -11,7 +11,7 @@ export async function GET(req: Request) {
 
   const { data, error } = await supabaseAdmin
     .from('invites')
-    .select('used, role')
+    .select('used')
     .eq('token', token)
     .single();
 
@@ -19,5 +19,5 @@ export async function GET(req: Request) {
     return NextResponse.json({ valid: false });
   }
 
-  return NextResponse.json({ valid: true, role: data.role });
+  return NextResponse.json({ valid: true });
 }

@@ -9,7 +9,7 @@ let vapidConfigured = false;
 if (publicKey && privateKey) {
   try {
     webpush.setVapidDetails(
-      'mailto:bonsang05r@gmail.com',
+      process.env.VAPID_EMAIL!,
       publicKey,
       privateKey
     );

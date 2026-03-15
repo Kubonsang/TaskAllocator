@@ -1,4 +1,5 @@
 import { supabaseAdmin } from '@/lib/supabaseServer';
+import sanitizeHtml from 'sanitize-html';
 
 export type AuthUser = {
   id: string;
@@ -47,12 +48,11 @@ export function isAdminOrMaster(user: AuthUser): boolean {
 
 /**
  * 입력값에서 HTML 태그를 제거하고 길이를 제한합니다 (XSS 방지).
+ * sanitize-html을 사용해 모든 태그와 속성을 제거하고 순수 텍스트만 반환합니다.
  */
 export function sanitize(input: string | undefined | null, maxLength = 500): string {
   if (!input) return '';
-  return input
-    .replace(/<[^>]*>/g, '')     // HTML 태그 제거
-    .replace(/[<>"'&]/g, '')     // 특수문자 제거
+  return sanitizeHtml(input, { allowedTags: [], allowedAttributes: {} })
     .trim()
     .slice(0, maxLength);
 }
