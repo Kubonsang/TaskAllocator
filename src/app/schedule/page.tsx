@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Calendar, Clock, FileText, Send, CalendarPlus, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Calendar, Clock, FileText, Send, CalendarPlus, ChevronLeft, ChevronRight, X, Trash2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { authFetch } from '@/lib/authClient';
 
 // 유틸: 시간 문자열(HH:mm)을 숫자(예: 9.5)로 변환
 function timeStringToNum(timeStr: string) {
@@ -31,6 +32,19 @@ export default function SchedulePage() {
   // 캘린더 관련 상태
   const [currentDate, setCurrentDate] = useState(new Date());
   const [mySchedules, setMySchedules] = useState<any[]>([]);
+  
+  // 선택한 날짜 관련 상태
+  const [selectedDateObj, setSelectedDateObj] = useState<Date | null>(null);
+  const [selectedDateSchedules, setSelectedDateSchedules] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (!selectedDateObj) return;
+    const daySchedules = mySchedules.filter(s => {
+        const sDate = new Date(s.date);
+        return sDate.getDate() === selectedDateObj.getDate() && sDate.getMonth() === selectedDateObj.getMonth() && sDate.getFullYear() === selectedDateObj.getFullYear();
+    });
+    setSelectedDateSchedules(daySchedules);
+  }, [mySchedules, selectedDateObj]);
 
   // 접속한 유저 확인
   useEffect(() => {
@@ -101,12 +115,36 @@ export default function SchedulePage() {
       alert(`[저장 완료] 성공적으로 등록되었습니다.`);
       setDate(''); setReason('');
       fetchMonthSchedules(currentDate.getFullYear(), currentDate.getMonth());
+      // 만약 등록한 날짜가 현재 보고있는 날짜라면 갱신 효과
     } catch(err: any) {
       alert(err.message);
     } finally {
       setIsSubmitting(false);
     }
   };
+
+  const handleDayClick = (dateNum: number | null) => {
+    if (!dateNum) return;
+    const d = new Date(currentDate.getFullYear(), currentDate.getMonth(), dateNum);
+    setSelectedDateObj(d);
+  };
+
+  const handleDeleteHoliday = async (scheduleId: string) => {
+    if(!confirm("해당 휴가/일정을 정말 취소하시겠습니까?")) return;
+    try {
+       const res = await authFetch('/api/schedule/my', {
+         method: 'DELETE',
+         body: JSON.stringify({ scheduleId })
+       });
+       const data = await res.json();
+       if(!res.ok) throw new Error(data.error);
+       alert("일정이 취소되었습니다.");
+       fetchMonthSchedules(currentDate.getFullYear(), currentDate.getMonth());
+    } catch(e:any) {
+       alert(e.message);
+    }
+  };
+
 
   // 캘린더 그리기 로직
   const year = currentDate.getFullYear();
@@ -247,7 +285,7 @@ export default function SchedulePage() {
              }) : [];
 
              return (
-               <div key={idx} className={`min-h-[70px] border border-gray-100 rounded-lg p-1.5 relative ${!dateNum ? 'bg-gray-50/50 border-dashed' : 'bg-white hover:border-indigo-200 transition-colors cursor-pointer group'}`}>
+               <div key={idx} onClick={() => handleDayClick(dateNum)} className={`min-h-[70px] border border-gray-100 rounded-lg p-1.5 relative ${!dateNum ? 'bg-gray-50/50 border-dashed' : 'bg-white hover:border-indigo-200 transition-colors cursor-pointer group hover:bg-indigo-50/10'}`}>
                  {dateNum && (
                     <>
                       <span className={`text-[11px] font-bold ${textCol}`}>{dateNum}</span>
@@ -268,9 +306,55 @@ export default function SchedulePage() {
                  )}
                </div>
              )
-          })}
-        </div>
-      </section>
-    </div>
-  );
-}
+            })}
+          </div>
+        </section>
+        
+        {/* 선택한 날짜 상세 일정 패널 */}
+        {selectedDateObj && (
+          <section className="bg-white p-6 rounded-3xl shadow-lg border-2 border-indigo-100 mt-6 relative animate-in slide-in-from-bottom-4 duration-300">
+             <button onClick={() => setSelectedDateObj(null)} className="absolute top-4 right-4 p-1 rounded-full text-gray-400 hover:text-gray-900 hover:bg-gray-100 transition">
+                <X size={20} />
+             </button>
+             <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                <Calendar size={18} className="text-indigo-600" />
+                {selectedDateObj.toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' })} 상세 일정
+             </h3>
+             
+             {selectedDateSchedules.length === 0 ? (
+               <div className="py-6 text-center text-gray-400 bg-gray-50 rounded-xl border border-dashed text-sm">
+                 이 날짜에는 등록된 일정이 없습니다.
+               </div>
+             ) : (
+               <div className="space-y-3">
+                 {selectedDateSchedules.map((s, idx) => {
+                    const isBlock = !s.task_id;
+                    const titleStr = isBlock ? (s.note || '휴가/개인일정') : (s.tasks?.title || '업무');
+                    return (
+                       <div key={idx} className={`p-4 rounded-xl border flex justify-between items-center ${isBlock ? 'bg-orange-50/50 border-orange-100' : 'bg-indigo-50/50 border-indigo-100'}`}>
+                          <div>
+                            <div className="flex items-center gap-2 mb-1">
+                               <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${isBlock ? 'bg-orange-100 text-orange-700' : 'bg-indigo-100 text-indigo-700'}`}>
+                                 {s.start_hour}시 ~ {s.end_hour}시
+                               </span>
+                               <span className="font-bold text-gray-900 text-sm">{titleStr}</span>
+                            </div>
+                            {!isBlock && s.tasks?.color && (
+                                <p className="text-xs text-gray-500 mt-1">이 일정은 업무이므로 임의로 취소할 수 없습니다.</p>
+                            )}
+                          </div>
+                          {isBlock && (
+                             <button onClick={() => handleDeleteHoliday(s.id)} className="shrink-0 flex items-center gap-1 px-3 py-1.5 bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700 font-semibold text-xs rounded-lg transition-colors border border-red-100">
+                                <Trash2 size={14} /> 취소하기
+                             </button>
+                          )}
+                       </div>
+                    )
+                 })}
+               </div>
+             )}
+          </section>
+        )}
+      </div>
+    );
+  }
