@@ -42,3 +42,10 @@ next-env.d.ts
 
 .vercel
 .env*.local
+
+# Android / TWA Packaging
+*.apk
+*.aab
+*.keystore
+*.jks
+signing-key.jks

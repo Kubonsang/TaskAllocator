@@ -1,10 +1,8 @@
 [{
-  "relation": ["delegate_permission/common.handle_all_urls"],
-  "target": {
-    "namespace": "android_app",
-    "package_name": "app.vercel.task_allocator_hc.twa",
-    "sha256_cert_fingerprints": [
-      "00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00:00"
-    ]
-  }
-}]
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "app.vercel.task_allocator_hc.twa",
+        "sha256_cert_fingerprints": ["38:36:A3:D1:9D:30:68:A4:94:A3:2F:C1:BC:83:40:43:23:04:E6:D7:7C:8A:4E:E5:DB:36:FC:50:1F:27:FA:2E"]
+      }
+    }]
