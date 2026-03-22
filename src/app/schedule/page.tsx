@@ -39,9 +39,14 @@ export default function SchedulePage() {
 
   useEffect(() => {
     if (!selectedDateObj) return;
+    const ySel = selectedDateObj.getFullYear();
+    const mSel = selectedDateObj.getMonth() + 1;
+    const dSel = selectedDateObj.getDate();
+    
     const daySchedules = mySchedules.filter(s => {
-        const sDate = new Date(s.date);
-        return sDate.getDate() === selectedDateObj.getDate() && sDate.getMonth() === selectedDateObj.getMonth() && sDate.getFullYear() === selectedDateObj.getFullYear();
+        if (!s.date) return false;
+        const [y, m, d] = s.date.split('-');
+        return Number(y) === ySel && Number(m) === mSel && Number(d) === dSel;
     });
     setSelectedDateSchedules(daySchedules);
   }, [mySchedules, selectedDateObj]);
@@ -278,10 +283,11 @@ export default function SchedulePage() {
              const isSat = idx % 7 === 6;
              const textCol = isSun ? 'text-red-500' : isSat ? 'text-blue-500' : 'text-gray-800';
              
-             // 이 날짜에 해당하는 내 일정 찾기
+             // 이 날짜에 해당하는 내 일정 찾기 (최적화)
              const daySchedules = dateNum ? mySchedules.filter(s => {
-                const sDate = new Date(s.date);
-                return sDate.getDate() === dateNum && sDate.getMonth() === month && sDate.getFullYear() === year;
+                if (!s.date) return false;
+                const [y, m, d] = s.date.split('-');
+                return Number(y) === year && Number(m) === month + 1 && Number(d) === dateNum;
              }) : [];
 
              return (
@@ -310,50 +316,52 @@ export default function SchedulePage() {
           </div>
         </section>
         
-        {/* 선택한 날짜 상세 일정 패널 */}
+        {/* 선택한 날짜 상세 일정 패널 (모달/새 창 방식) */}
         {selectedDateObj && (
-          <section className="bg-white p-6 rounded-3xl shadow-lg border-2 border-indigo-100 mt-6 relative animate-in slide-in-from-bottom-4 duration-300">
-             <button onClick={() => setSelectedDateObj(null)} className="absolute top-4 right-4 p-1 rounded-full text-gray-400 hover:text-gray-900 hover:bg-gray-100 transition">
-                <X size={20} />
-             </button>
-             <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-                <Calendar size={18} className="text-indigo-600" />
-                {selectedDateObj.toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' })} 상세 일정
-             </h3>
-             
-             {selectedDateSchedules.length === 0 ? (
-               <div className="py-6 text-center text-gray-400 bg-gray-50 rounded-xl border border-dashed text-sm">
-                 이 날짜에는 등록된 일정이 없습니다.
-               </div>
-             ) : (
-               <div className="space-y-3">
-                 {selectedDateSchedules.map((s, idx) => {
-                    const isBlock = !s.task_id;
-                    const titleStr = isBlock ? (s.note || '휴가/개인일정') : (s.tasks?.title || '업무');
-                    return (
-                       <div key={idx} className={`p-4 rounded-xl border flex justify-between items-center ${isBlock ? 'bg-orange-50/50 border-orange-100' : 'bg-indigo-50/50 border-indigo-100'}`}>
-                          <div>
-                            <div className="flex items-center gap-2 mb-1">
-                               <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${isBlock ? 'bg-orange-100 text-orange-700' : 'bg-indigo-100 text-indigo-700'}`}>
-                                 {s.start_hour}시 ~ {s.end_hour}시
-                               </span>
-                               <span className="font-bold text-gray-900 text-sm">{titleStr}</span>
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+             <section className="bg-white w-full max-w-sm p-5 sm:p-6 rounded-3xl shadow-2xl relative animate-in zoom-in-95 duration-200 max-h-[85vh] overflow-y-auto no-scrollbar">
+               <button onClick={() => setSelectedDateObj(null)} className="absolute top-4 right-4 p-1.5 rounded-full text-gray-400 hover:text-gray-900 hover:bg-gray-100 transition focus:outline-none">
+                  <X size={20} />
+               </button>
+               <h3 className="text-lg font-bold text-gray-900 mb-5 flex items-center gap-2 pr-6">
+                  <Calendar size={18} className="text-indigo-600 shrink-0" />
+                  <span className="truncate">{selectedDateObj.toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' })} 상세 일정</span>
+               </h3>
+               
+               {selectedDateSchedules.length === 0 ? (
+                 <div className="py-8 text-center text-gray-400 bg-gray-50 rounded-2xl border border-dashed border-gray-200 text-sm">
+                   이 날짜에는 등록된 일정이 없습니다.
+                 </div>
+               ) : (
+                 <div className="space-y-3">
+                   {selectedDateSchedules.map((s, idx) => {
+                      const isBlock = !s.task_id;
+                      const titleStr = isBlock ? (s.note || '휴가/개인일정') : (s.tasks?.title || '업무');
+                      return (
+                         <div key={idx} className={`p-4 rounded-xl border flex flex-col sm:flex-row justify-between sm:items-center gap-3 ${isBlock ? 'bg-orange-50/50 border-orange-100' : 'bg-indigo-50/50 border-indigo-100'}`}>
+                            <div>
+                              <div className="flex items-center gap-2 mb-1 border-b border-transparent">
+                                 <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${isBlock ? 'bg-orange-100 text-orange-700' : 'bg-indigo-100 text-indigo-700'}`}>
+                                   {s.start_hour}시 ~ {s.end_hour}시
+                                 </span>
+                                 <span className="font-bold text-gray-900 text-sm">{titleStr}</span>
+                              </div>
+                              {!isBlock && s.tasks?.color && (
+                                  <p className="text-[11px] text-gray-500 mt-1">이 일정은 배정된 업무이므로 임의로 취소할 수 없습니다.</p>
+                              )}
                             </div>
-                            {!isBlock && s.tasks?.color && (
-                                <p className="text-xs text-gray-500 mt-1">이 일정은 업무이므로 임의로 취소할 수 없습니다.</p>
+                            {isBlock && (
+                               <button onClick={() => handleDeleteHoliday(s.id)} className="w-full sm:w-auto shrink-0 flex items-center justify-center gap-1.5 px-3 py-2 bg-red-50 text-red-600 hover:bg-red-600 hover:text-white font-bold text-xs rounded-lg transition-colors border border-red-100">
+                                  <Trash2 size={14} /> 취소하기
+                               </button>
                             )}
-                          </div>
-                          {isBlock && (
-                             <button onClick={() => handleDeleteHoliday(s.id)} className="shrink-0 flex items-center gap-1 px-3 py-1.5 bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700 font-semibold text-xs rounded-lg transition-colors border border-red-100">
-                                <Trash2 size={14} /> 취소하기
-                             </button>
-                          )}
-                       </div>
-                    )
-                 })}
-               </div>
-             )}
-          </section>
+                         </div>
+                      )
+                   })}
+                 </div>
+               )}
+             </section>
+          </div>
         )}
       </div>
     );
